@@ -70,6 +70,15 @@
         opacity: 0.03;
         background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
       }
+
+      /* ---------- Mobile refinements ----------
+         All rules are max-width only, so the desktop layout is never affected. */
+      @media (max-width: 767px) {
+        html, body { overflow-x: hidden; }
+        /* Lighten the hard offset shadows so the brutalist cards feel right on phones */
+        .shadow-hard    { box-shadow: 3px 3px 0 0 #111111 !important; }
+        .shadow-hard-lg { box-shadow: 5px 5px 0 0 #111111 !important; }
+      }
     </style>
   <script type="importmap">
 {
