@@ -2,6 +2,15 @@ from fastapi import FastAPI, File, UploadFile, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Dict, Any, Optional
 import os
+import sys
+
+# Force UTF-8 console output so status/emoji strings print on Windows (cp1252).
+try:
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
+except Exception:
+    pass
+
 from video_utils import (
     validate_video,
     save_uploaded_video,
@@ -18,7 +27,8 @@ app = FastAPI(
 )
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3001", "http://localhost:3000"],  # Frontend URLs
+    allow_origins=["http://localhost:3000", "http://localhost:3001"],  # Frontend URLs
+    allow_origin_regex=r"http://(localhost|127\.0\.0\.1):\d+",  # any local dev port
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -131,51 +141,6 @@ async def analyze_context_endpoint(
     except Exception as e:
         print(f"Error during context analysis: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Context analysis failed: {str(e)}")
-    finally:
-        if video_path and os.path.exists(video_path):
-            cleanup_temp_files([video_path])
-        if frame_paths:
-            cleanup_temp_files(frame_paths)
-@app.post("/analyze")
-async def analyze_video(
-    video: UploadFile = File(..., description="Video file (MP4/MOV, 10-20 seconds)"),
-    claim: str = Form(..., description="User's claim text")
-) -> Dict[str, Any]:
-
-    video_path = None
-    frame_paths = []
-    try:
-        if not video:
-            raise HTTPException(status_code=400, detail="No video file provided")
-        if not claim or len(claim.strip()) < 5:
-            raise HTTPException(status_code=400, detail="Claim must be at least 5 characters")
-        video_content = await video.read()
-        video_path = save_uploaded_video(video_content, video.filename)
-        is_valid, error_msg = validate_video(video_path)
-        if not is_valid:
-            raise HTTPException(status_code=400, detail=error_msg)
-        frame_paths = extract_frames(video_path, interval=2)
-        if not frame_paths:
-            raise HTTPException(status_code=500, detail="Failed to extract frames from video")
-        print(f"Analyzing {len(frame_paths)} frames...")
-        temporal_result = analyze_temporal_reuse(frame_paths)
-        print(f"Temporal: {temporal_result}")
-        contextual_result = analyze_contextual_consistency(frame_paths, claim)
-        print(f"Contextual: {contextual_result}")
-        environmental_result = analyze_environmental_consistency(frame_paths, claim)
-        print(f"Environmental: {environmental_result}")
-        result = calculate_risk_assessment(
-            temporal_result,
-            contextual_result,
-            environmental_result
-        )
-        print(f"Final Risk Score: {result['riskScore']:.1f} ({result['riskLevel']})")
-        return result
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"Error during analysis: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
     finally:
         if video_path and os.path.exists(video_path):
             cleanup_temp_files([video_path])

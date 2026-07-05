@@ -1,135 +1,154 @@
-import torch
-import torch.nn as nn
-import numpy as np
+"""
+Deepfake detection module.
+
+Pipeline: detect faces in each frame with OpenCV YuNet, crop them, and run a
+pretrained face-forgery classifier (dima806/deepfake_vs_real_image_detection,
+a ViT trained on real/fake faces) on each crop. Frame-level scores are
+aggregated into a manipulation-likelihood risk score.
+
+Notes:
+- Deepfakes are a face phenomenon, so we only score detected faces. A video
+  with no faces returns LOW risk (nothing to assess), which is the honest result.
+- The classifier is sensitive (skews toward flagging), so treat the score as a
+  probabilistic indicator, not a verdict.
+"""
+import os
 from typing import Dict, Any, List
-from pathlib import Path
+
 import cv2
-from transformers import CLIPProcessor, CLIPModel
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print(f"Deepfake detection using device: {device}")
+import numpy as np
+from PIL import Image
+import torch
+from transformers import pipeline
+
+device = 0 if torch.cuda.is_available() else -1
+print(f"Deepfake detection using device: {'cuda' if device == 0 else 'cpu'}")
+
+_HERE = os.path.dirname(__file__)
+YUNET_PATH = os.path.join(_HERE, "models", "face_yunet.onnx")
+DEEPFAKE_MODEL = "dima806/deepfake_vs_real_image_detection"
+
 try:
-    model = CLIPModel.from_pretrained("openai/clip-vit-large-patch14", local_files_only=True)
-    processor = CLIPProcessor.from_pretrained("openai/clip-vit-large-patch14", local_files_only=True)
-    model.to(device)
-    model.eval()
-    print("✓ GenD CLIP-L/14 model loaded successfully")
+    classifier = pipeline("image-classification", model=DEEPFAKE_MODEL, device=device)
+    print("[OK] Deepfake face classifier loaded")
 except Exception as e:
-    print(f"Warning: Could not load CLIP model: {e}")
-    model = None
-    processor = None
-def preprocess_frames_for_gend(frame_paths: List[str]) -> torch.Tensor:
+    print(f"Warning: could not load deepfake classifier: {e}")
+    classifier = None
 
-    if not processor:
-        return None
-    images = []
+
+def _fake_prob(preds: List[Dict[str, Any]]) -> float:
+    for p in preds:
+        if "fake" in p["label"].lower():
+            return float(p["score"])
+    return 0.0
+
+
+def _detect_face_crops(frame_paths: List[str]) -> List[Image.Image]:
+    """Return padded face crops (max one per frame) using YuNet."""
+    if not os.path.exists(YUNET_PATH):
+        return []
+    detector = cv2.FaceDetectorYN.create(YUNET_PATH, "", (320, 320), score_threshold=0.6)
+    crops = []
     for path in frame_paths:
-        img = cv2.imread(path)
-        if img is not None:
-            img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-            images.append(img_rgb)
-    if not images:
-        return None
-    inputs = processor(images=images, return_tensors="pt", padding=True)
-    return inputs['pixel_values'].to(device)
+        frame = cv2.imread(path)
+        if frame is None:
+            continue
+        h, w = frame.shape[:2]
+        detector.setInputSize((w, h))
+        _, faces = detector.detect(frame)
+        if faces is None:
+            continue
+        for f in faces[:1]:  # dominant face per frame
+            x, y, fw, fh = [int(v) for v in f[:4]]
+            pad = int(0.25 * fw)
+            x0, y0 = max(0, x - pad), max(0, y - pad)
+            x1, y1 = min(w, x + fw + pad), min(h, y + fh + pad)
+            crop = frame[y0:y1, x0:x1]
+            if crop.size:
+                crops.append(Image.fromarray(cv2.cvtColor(crop, cv2.COLOR_BGR2RGB)))
+    return crops
+
+
 def compute_deepfake_score(frame_paths: List[str]) -> Dict[str, Any]:
+    crops = _detect_face_crops(frame_paths)
+    if not crops or classifier is None:
+        return {"fake_probability": 0.1, "confidence": 0.4, "face_count": len(crops),
+                "frame_scores": [], "consistency": 1.0, "no_faces": len(crops) == 0}
 
-    if not model or not processor:
-        return {
-            "fake_probability": 0.15,
-            "confidence": 0.6,
-            "frame_scores": [0.1, 0.2, 0.15],
-            "consistency": 0.85
-        }
-    try:
-        with torch.no_grad():
-            frame_tensor = preprocess_frames_for_gend(frame_paths)
-            if frame_tensor is None:
-                raise ValueError("Failed to preprocess frames")
-            vision_outputs = model.vision_model(pixel_values=frame_tensor)
-            image_features = vision_outputs.pooler_output
-            feature_norms = torch.norm(image_features, dim=1)
-            feature_variance = torch.var(image_features, dim=1).mean().item()
-            uniformity_score = 1.0 - min(feature_variance / 100.0, 1.0)
-            frame_scores = torch.softmax(feature_norms, dim=0).cpu().numpy()
-            fake_prob = float(uniformity_score * 0.7 + frame_scores.std() * 0.3)
-            fake_prob = min(max(fake_prob, 0.0), 1.0)
-            consistency = 1.0 - float(frame_scores.std())
-            return {
-                "fake_probability": fake_prob,
-                "confidence": 0.75,
-                "frame_scores": frame_scores.tolist(),
-                "consistency": consistency
-            }
-    except Exception as e:
-        print(f"Error in deepfake analysis: {e}")
-        return {
-            "fake_probability": 0.25,
-            "confidence": 0.5,
-            "frame_scores": [0.25] * len(frame_paths),
-            "consistency": 0.75
-        }
+    scores = []
+    for crop in crops:
+        try:
+            scores.append(_fake_prob(classifier(crop)))
+        except Exception as e:
+            print(f"Classifier error on a face crop: {e}")
+    if not scores:
+        return {"fake_probability": 0.1, "confidence": 0.4, "face_count": 0,
+                "frame_scores": [], "consistency": 1.0, "no_faces": True}
+
+    fake_prob = float(np.mean(scores))
+    consistency = float(1.0 - np.std(scores))
+    return {
+        "fake_probability": fake_prob,
+        "confidence": 0.8,
+        "face_count": len(scores),
+        "frame_scores": [round(float(s), 3) for s in scores],
+        "consistency": consistency,
+        "no_faces": False,
+    }
+
+
 def analyze_deepfake_risk(frame_paths: List[str]) -> Dict[str, Any]:
-
     if not frame_paths:
-        return {
-            "riskScore": 0,
-            "riskLevel": "LOW",
-            "summary": "No frames to analyze.",
-            "signals": {
-                "forensic": {
-                    "name": "Deepfake Manipulation Likelihood",
-                    "status": "pass",
-                    "confidence": 0.0,
-                    "details": "Insufficient data"
-                },
-                "temporal": {
-                    "name": "Frame-level Detection Consistency",
-                    "status": "pass",
-                    "confidence": 0.0,
-                    "details": "No frames analyzed"
-                }
-            }
-        }
+        return _empty("No frames to analyze.")
+
     result = compute_deepfake_score(frame_paths)
     fake_prob = result["fake_probability"]
-    confidence = result["confidence"]
     consistency = result["consistency"]
-    frame_scores = result["frame_scores"]
+    face_count = result["face_count"]
+    no_faces = result.get("no_faces", False)
+
     risk_score = float(fake_prob * 100)
-    if risk_score < 30:
-        risk_level = "LOW"
-    elif risk_score < 70:
-        risk_level = "MEDIUM"
-    else:
-        risk_level = "HIGH"
-    forensic_status = "fail" if fake_prob > 0.5 else ("warn" if fake_prob > 0.3 else "pass")
+    risk_level = "LOW" if risk_score < 35 else ("MEDIUM" if risk_score < 65 else "HIGH")
+    forensic_status = "fail" if fake_prob > 0.65 else ("warn" if fake_prob > 0.35 else "pass")
     temporal_status = "pass" if consistency > 0.7 else "warn"
-    forensic_details = (
-        f"Analysis detected a {fake_prob*100:.1f}% likelihood of manipulation. "
-        f"Analyzed {len(frame_paths)} frames using generalized deepfake detection."
-    )
-    temporal_details = (
-        f"Frame-level consistency: {consistency*100:.1f}%. "
-        f"{'High variance suggests potential manipulation' if consistency < 0.7 else 'Consistent detection across frames'}."
-    )
-    if risk_level == "HIGH":
-        summary = (
-            f"⚠️ HIGH RISK: Analysis indicates {fake_prob*100:.1f}% likelihood of deepfake manipulation. "
-            "Facial consistency and visual artifacts suggest potential synthetic generation or editing. "
-            "This analysis provides probabilistic risk indicators, not factual determinations."
+
+    if no_faces:
+        forensic_details = (
+            "No faces were detected in the sampled frames, so face-based deepfake "
+            "manipulation could not be assessed. This does not rule out other forms of editing."
         )
-    elif risk_level == "MEDIUM":
+        temporal_details = "No faces to evaluate for frame-level consistency."
         summary = (
-            f"⚠️ MEDIUM RISK: Some indicators ({fake_prob*100:.1f}% likelihood) suggest possible manipulation. "
-            "Further verification recommended through additional sources. "
-            "This analysis provides probabilistic risk indicators, not factual determinations."
+            "✓ LOW RISK: No faces detected in this video, so no deepfake face manipulation "
+            "could be assessed. This analysis provides probabilistic risk indicators, not factual determinations."
         )
     else:
-        summary = (
-            f"✓ LOW RISK: Analysis shows {fake_prob*100:.1f}% manipulation likelihood. "
-            "Video exhibits characteristics consistent with authentic capture. "
-            "This analysis provides probabilistic risk indicators, not factual determinations."
+        forensic_details = (
+            f"Analyzed {face_count} detected face(s) with a pretrained face-forgery classifier. "
+            f"Mean manipulation likelihood: {fake_prob*100:.1f}%."
         )
+        temporal_details = (
+            f"Face-level score consistency: {consistency*100:.1f}%. "
+            f"{'High variance across faces' if consistency < 0.7 else 'Consistent scores across faces'}."
+        )
+        if risk_level == "HIGH":
+            summary = (
+                f"⚠️ HIGH RISK: The face-forgery classifier flags {fake_prob*100:.1f}% manipulation "
+                f"likelihood across {face_count} face(s). Strong indicators of deepfake or face-swap editing. "
+                "This analysis provides probabilistic risk indicators, not factual determinations."
+            )
+        elif risk_level == "MEDIUM":
+            summary = (
+                f"⚠️ MEDIUM RISK: Some indicators ({fake_prob*100:.1f}% likelihood) of face manipulation "
+                f"across {face_count} face(s). Further verification recommended. "
+                "This analysis provides probabilistic risk indicators, not factual determinations."
+            )
+        else:
+            summary = (
+                f"✓ LOW RISK: Faces show {fake_prob*100:.1f}% manipulation likelihood, consistent with "
+                "authentic capture. This analysis provides probabilistic risk indicators, not factual determinations."
+            )
+
     return {
         "riskScore": risk_score,
         "riskLevel": risk_level,
@@ -138,14 +157,28 @@ def analyze_deepfake_risk(frame_paths: List[str]) -> Dict[str, Any]:
             "forensic": {
                 "name": "Deepfake Manipulation Likelihood",
                 "status": forensic_status,
-                "confidence": confidence,
-                "details": forensic_details
+                "confidence": result["confidence"],
+                "details": forensic_details,
             },
             "temporal": {
-                "name": "Frame-level Detection Consistency",
+                "name": "Face-level Detection Consistency",
                 "status": temporal_status,
                 "confidence": consistency,
-                "details": temporal_details
-            }
-        }
+                "details": temporal_details,
+            },
+        },
+    }
+
+
+def _empty(msg: str) -> Dict[str, Any]:
+    return {
+        "riskScore": 0,
+        "riskLevel": "LOW",
+        "summary": msg,
+        "signals": {
+            "forensic": {"name": "Deepfake Manipulation Likelihood", "status": "pass",
+                         "confidence": 0.0, "details": "Insufficient data"},
+            "temporal": {"name": "Face-level Detection Consistency", "status": "pass",
+                         "confidence": 0.0, "details": "No frames analyzed"},
+        },
     }

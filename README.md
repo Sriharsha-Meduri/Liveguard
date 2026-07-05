@@ -4,10 +4,10 @@ Multi-dimensional video forensics system for detecting deepfakes, AI-generated c
 
 ## 🎯 Overview
 
-LiveGuard AI provides comprehensive forensic analysis across three independent modules:
-- **Deepfake Detection** - GenD model with CLIP-L/14 encoder
-- **AI-Generated Detection** - D3 training-free method using temporal statistics
-- **Context Integrity** - Temporal reuse and semantic alignment analysis
+LiveGuard AI provides forensic analysis across three independent modules, each backed by a real pretrained model:
+- **Deepfake Detection** - face detection (OpenCV YuNet) + a pretrained face-forgery classifier scored per detected face
+- **AI-Generated Detection** - a pretrained AI-vs-real image classifier scored across sampled frames
+- **Context Integrity** - CLIP zero-shot scene-vs-claim matching, temporal reuse (ResNet-50 embeddings), and lighting/time consistency
 
 ## 🚀 Quick Start
 
@@ -21,11 +21,29 @@ LiveGuard AI provides comprehensive forensic analysis across three independent m
 
 ```bash
 cd backend
-pip install -r requirements.txt
+python -m venv .venv
+# Windows:
+.venv\Scripts\activate
+# macOS / Linux:
+source .venv/bin/activate
+
+pip install -r requirements.txt      # installs CPU PyTorch by default
 python app.py
 ```
 
-Backend runs at `http://localhost:8000`
+Backend runs at `http://localhost:8000`.
+
+**First run** downloads the pretrained models (~1.5 GB total: the deepfake
+classifier, the AI-image classifier, and CLIP) and caches them, so the first
+startup takes a few minutes. Subsequent starts take ~20 seconds. The YuNet face
+detector (`backend/models/face_yunet.onnx`) is bundled.
+
+**Optional GPU (NVIDIA):** for faster inference, install the CUDA build of
+PyTorch instead (the code auto-detects and uses the GPU):
+
+```bash
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu126
+```
 
 ### Frontend Setup
 
@@ -42,10 +60,13 @@ Frontend runs at `http://localhost:3000`
 liveguard-ai/
 ├── backend/
 │   ├── app.py                      # FastAPI main application
-│   ├── analyze_deepfake.py         # GenD deepfake detection module
-│   ├── analyze_synthetic.py        # D3 AI-generated detection module
-│   ├── analyze_context.py          # Context integrity module
-│   ├── scoring.py                  # Risk scoring logic
+│   ├── analyze_deepfake.py         # YuNet face detection + face-forgery classifier
+│   ├── analyze_synthetic.py        # AI-generated image classifier
+│   ├── analyze_context.py          # Context integrity (scene / reuse / lighting)
+│   ├── temporal_analysis.py        # Reuse detection (ResNet-50 embeddings)
+│   ├── contextual_analysis.py      # CLIP zero-shot scene-vs-claim
+│   ├── environmental_analysis.py   # Lighting/time consistency
+│   ├── models/                     # face_yunet.onnx, reference_embeddings.pkl
 │   └── requirements.txt            # Python dependencies
 ├── index.tsx                       # React frontend (single-file)
 ├── index.html                      # HTML entry point
@@ -54,20 +75,20 @@ liveguard-ai/
 
 ## 🔬 Technical Architecture
 
-### Module 01: Deepfake Detection (GenD)
-- **Model**: OpenAI CLIP-ViT-Large/14
-- **Method**: Feature-space metric learning
-- **Output**: Manipulation artifact score (0-100)
+### Module 01: Deepfake Detection
+- **Models**: OpenCV YuNet (face detection) + `dima806/deepfake_vs_real_image_detection` (ViT face-forgery classifier)
+- **Method**: detect faces per frame, crop, and score each face for manipulation; aggregate to a risk score. Videos with no faces return LOW (nothing to assess).
+- **Output**: Manipulation likelihood (0-100)
 
-### Module 02: AI-Generated Detection (D3)
-- **Model**: XCLIP / CLIP-ViT-Base-32
-- **Method**: Training-free statistical calibration
-- **Output**: Synthetic pattern confidence (0-100)
+### Module 02: AI-Generated Detection
+- **Model**: `umm-maybe/AI-image-detector` (ViT, real-vs-artificial)
+- **Method**: classify each sampled frame as real vs AI-generated and aggregate the mean "artificial" probability plus per-frame agreement.
+- **Output**: Synthetic-media likelihood (0-100)
 
 ### Module 03: Context Integrity
-- **Model**: ResNet-50, Scene classification
-- **Method**: Multi-signal aggregation
-- **Output**: Temporal/spatial inconsistency score (0-100)
+- **Models**: CLIP-ViT-Base/32 (zero-shot scene classification) + ResNet-50 (reuse embeddings)
+- **Method**: multi-signal aggregation — scene-vs-claim mismatch (CLIP), temporal reuse against a reference set (cosine similarity), and lighting/time consistency (brightness heuristics).
+- **Output**: Context-integrity risk score (0-100)
 
 ## 🎨 Frontend Features
 
@@ -95,25 +116,36 @@ claim: "Video description text" (for context module only)
 
 ```json
 {
-  "riskScore": 75.5,
+  "riskScore": 99.8,
   "riskLevel": "HIGH",
   "summary": "Detailed analysis summary",
-  "confidence": 0.85,
-  "details": {
-    "findings": ["Finding 1", "Finding 2"],
-    "evidence": "Supporting forensic evidence"
+  "signals": {
+    "forensic": {
+      "name": "Deepfake Manipulation Likelihood",
+      "status": "fail",
+      "confidence": 0.8,
+      "details": "Analyzed 6 detected face(s) ..."
+    },
+    "temporal": {
+      "name": "Face-level Detection Consistency",
+      "status": "pass",
+      "confidence": 0.99,
+      "details": "Face-level score consistency: 99.9% ..."
+    }
   }
 }
 ```
+
+`riskLevel` is `LOW` / `MEDIUM` / `HIGH`. Each signal's `status` is `pass` / `warn` / `fail`.
 
 ## 🛠️ Tech Stack
 
 **Backend:**
 - FastAPI
-- PyTorch
-- OpenAI CLIP
-- ResNet-50
-- FFmpeg
+- PyTorch + Hugging Face Transformers
+- OpenCV (YuNet face detection)
+- OpenAI CLIP (ViT-B/32), ResNet-50
+- Pretrained detectors: `dima806/deepfake_vs_real_image_detection`, `umm-maybe/AI-image-detector`
 
 **Frontend:**
 - React 19
@@ -124,9 +156,9 @@ claim: "Video description text" (for context module only)
 
 ## 📊 Performance
 
-- **Analysis Speed**: < 20 seconds per module
-- **Video Duration**: 5-20 seconds
-- **Supported Formats**: MP4, MOV, WebM
+- **Analysis Speed**: ~3-10 seconds per module on CPU (faster on GPU)
+- **Video Duration**: 5-20 seconds (enforced)
+- **Supported Formats**: MP4, MOV
 - **Max File Size**: 100MB
 
 ## 🔒 Privacy & Security
@@ -150,7 +182,8 @@ This is a technical demonstration project.
 
 ## 🙏 Acknowledgments
 
-- GenD: Generalized Deepfake Detection
-- D3: Training-Free Detection for AI-Generated Videos
-- OpenAI CLIP
-- PyTorch Community
+- [`dima806/deepfake_vs_real_image_detection`](https://huggingface.co/dima806/deepfake_vs_real_image_detection) - deepfake face classifier
+- [`umm-maybe/AI-image-detector`](https://huggingface.co/umm-maybe/AI-image-detector) - AI-generated image classifier
+- OpenAI CLIP and torchvision ResNet-50
+- OpenCV YuNet face detector
+- Hugging Face Transformers and the PyTorch community

@@ -8,7 +8,7 @@ import torchvision.models as models
 import torchvision.transforms as transforms
 from PIL import Image
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model = models.resnet50(pretrained=True)
+model = models.resnet50(weights=models.ResNet50_Weights.DEFAULT)
 model = torch.nn.Sequential(*list(model.children())[:-1])  # Remove final layer
 model.to(device)
 model.eval()

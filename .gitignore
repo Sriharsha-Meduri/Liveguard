@@ -69,6 +69,15 @@ wheels/
 *.onnx
 *.h5
 
+# ...but keep the small bundled models the app needs
+!backend/models/face_yunet.onnx
+!backend/models/reference_embeddings.pkl
+
+# Local virtualenv
+.venv/
+backend/.venv/
+backend/temp/
+
 # OS files
 Thumbs.db
 .DS_Store
