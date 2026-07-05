@@ -8,6 +8,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
+# Upgrade pip: the base image's pip 23.0.1 wrongly rejects the PyTorch index's
+# typing_extensions/jinja2 wheels over a name-normalization bug. Newer pip fixes it.
+RUN pip install --no-cache-dir --upgrade pip
+
 # CPU-only PyTorch (no CUDA needed on the free Spaces CPU tier; much smaller).
 # Pin >= 2.6: transformers refuses to load .bin model weights on older torch (CVE-2025-32434).
 RUN pip install --no-cache-dir torch==2.7.1 torchvision==0.22.1 --index-url https://download.pytorch.org/whl/cpu
