@@ -187,7 +187,7 @@ const Footer = ({ setPage }: { setPage: (page: Page) => void }) => (
           and moderation teams.
         </p>
         <div className="flex gap-4 text-sm font-mono text-paper/60">
-          <span>v1.0.0 MVP</span>
+          <span>v2.0 Reloaded</span>
           <span>•</span>
           <span>Build 2024.10</span>
         </div>
@@ -231,7 +231,7 @@ const HomePage = ({ setPage }: { setPage: (page: Page) => void }) => (
       <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-12 items-center">
         <div>
           <div className="inline-block bg-alert text-ink font-mono text-xs font-bold px-3 py-1 mb-6 border border-ink shadow-[2px_2px_0px_0px_#111111]">
-            BETA RELEASE v1.0
+            PROVENANCE // RELOADED v2.0
           </div>
           <h1 className="font-serif font-black text-5xl md:text-7xl leading-[0.9] text-ink mb-8">
             TRUTH IN <br/>
@@ -2154,23 +2154,6 @@ const AboutPage = () => (
                 development, spanning education, fintech, cybersecurity, and computer vision. I enjoy
                 owning the whole lifecycle, from model development to deployment.
               </p>
-              <div className="bg-paper-dark p-6 border-l-4 border-alert mb-6">
-                <h5 className="font-bold text-lg mb-3 text-alert">Key Achievements</h5>
-                <ul className="space-y-2 text-sm text-ink/80">
-                  <li className="flex items-start gap-2">
-                    <CheckCircle className="text-success mt-0.5 shrink-0" size={16} />
-                    <span><strong>Winner</strong>, National Cybersecurity Hackathon (organised by MeitY / ISEA)</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle className="text-success mt-0.5 shrink-0" size={16} />
-                    <span>Built <strong>PhishingLens</strong>, a multi-modal phishing detection system achieving 96% accuracy</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle className="text-success mt-0.5 shrink-0" size={16} />
-                    <span>Co-Lead, Cybersecurity Chapter at GDGoC (Google Developer Groups on Campus)</span>
-                  </li>
-                </ul>
-              </div>
             </div>
             <div className="flex flex-col gap-4 min-w-[200px]">
               <a 
