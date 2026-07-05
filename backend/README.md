@@ -1,5 +1,5 @@
 ---
-title: LiveGuard AI Backend
+title: Provenance Backend
 emoji: 🛡️
 colorFrom: indigo
 colorTo: purple
@@ -8,18 +8,18 @@ app_port: 7860
 pinned: false
 ---
 
-# LiveGuard AI — Backend
+# Provenance - Backend
 
-Video forensics API (FastAPI) for the [LiveGuard AI](https://github.com/Sriharsha-Meduri/Liveguard) project.
+Video forensics API (FastAPI) for the [Provenance](https://github.com/Sriharsha-Meduri/Provenance) project.
 
 This folder is deployable as a **Hugging Face Space (Docker SDK)**. When pushed to
 a Space, Hugging Face builds the `Dockerfile` and serves the API on port 7860.
 
 ## Endpoints
 - `GET  /health`
-- `POST /analyze/deepfake` — form field `video`
-- `POST /analyze/synthetic` — form field `video`
-- `POST /analyze/context` — form fields `video`, `claim`
+- `POST /analyze/deepfake` - form field `video`
+- `POST /analyze/synthetic` - form field `video`
+- `POST /analyze/context` - form fields `video`, `claim`
 
 Interactive docs at `/docs`.
 

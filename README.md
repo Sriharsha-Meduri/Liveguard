@@ -1,10 +1,10 @@
-# LiveGuard AI
+# Provenance
 
 Multi-dimensional video forensics system for detecting deepfakes, AI-generated content, and miscontextualized footage.
 
 ## 🎯 Overview
 
-LiveGuard AI provides forensic analysis across three independent modules, each backed by a real pretrained model:
+Provenance provides forensic analysis across three independent modules, each backed by a real pretrained model:
 - **Deepfake Detection** - face detection (OpenCV YuNet) + a pretrained face-forgery classifier scored per detected face
 - **AI-Generated Detection** - a pretrained AI-vs-real image classifier scored across sampled frames
 - **Context Integrity** - CLIP zero-shot scene-vs-claim matching, temporal reuse (ResNet-50 embeddings), and lighting/time consistency
@@ -65,14 +65,14 @@ recommended free setup is **backend on Hugging Face Spaces** (free CPU tier,
 2. Push the contents of the `backend/` folder to the Space's git repo (it contains a `Dockerfile` and a Space `README.md`). For example:
    ```bash
    cd backend
-   git init && git add . && git commit -m "LiveGuard backend"
+   git init && git add . && git commit -m "Provenance backend"
    git remote add space https://huggingface.co/spaces/<user>/<space-name>
    git push space main
    ```
 3. The Space builds the image (models are baked in, so it's ready on boot) and serves at `https://<user>-<space-name>.hf.space`. Check `/health`.
 
 ### Frontend → Vercel
-1. Import the `Sriharsha-Meduri/Liveguard` repo at [vercel.com/new](https://vercel.com/new). Framework auto-detects **Vite**.
+1. Import the `Sriharsha-Meduri/Provenance` repo at [vercel.com/new](https://vercel.com/new). Framework auto-detects **Vite**.
 2. Add an environment variable **`VITE_API_URL`** = your Space URL (e.g. `https://<user>-<space-name>.hf.space`).
 3. Deploy. The CORS config already allows any `*.vercel.app` origin.
 
@@ -81,7 +81,7 @@ recommended free setup is **backend on Hugging Face Spaces** (free CPU tier,
 ## 📁 Project Structure
 
 ```
-liveguard-ai/
+provenance/
 ├── backend/
 │   ├── app.py                      # FastAPI main application
 │   ├── analyze_deepfake.py         # YuNet face detection + face-forgery classifier
@@ -111,7 +111,7 @@ liveguard-ai/
 
 ### Module 03: Context Integrity
 - **Models**: CLIP-ViT-Base/32 (zero-shot scene classification) + ResNet-50 (reuse embeddings)
-- **Method**: multi-signal aggregation — scene-vs-claim mismatch (CLIP), temporal reuse against a reference set (cosine similarity), and lighting/time consistency (brightness heuristics).
+- **Method**: multi-signal aggregation: scene-vs-claim mismatch (CLIP), temporal reuse against a reference set (cosine similarity), and lighting/time consistency (brightness heuristics).
 - **Output**: Context-integrity risk score (0-100)
 
 ## 🎨 Frontend Features

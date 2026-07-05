@@ -121,7 +121,7 @@ const Navbar = ({ currentPage, setPage, isMenuOpen, setIsMenuOpen }: any) => {
           <div className="bg-ink text-paper p-1.5 border border-ink group-hover:bg-alert group-hover:text-ink transition-colors">
             <Shield size={24} strokeWidth={2.5} />
           </div>
-          <span className="font-serif font-black text-2xl tracking-tighter">LiveGuard AI</span>
+          <span className="font-serif font-black text-2xl tracking-tighter">Provenance</span>
         </div>
 
         {/* Desktop Links */}
@@ -179,7 +179,7 @@ const Footer = ({ setPage }: { setPage: (page: Page) => void }) => (
       <div className="col-span-1 md:col-span-2">
         <div className="flex items-center gap-2 mb-6">
           <Shield size={32} className="text-alert" />
-          <span className="font-serif font-black text-3xl">LiveGuard AI</span>
+          <span className="font-serif font-black text-3xl">Provenance</span>
         </div>
         <p className="font-sans text-paper/80 max-w-md leading-relaxed mb-6">
           An assistive tool for verifying the context of near-live video content. 
@@ -214,7 +214,7 @@ const Footer = ({ setPage }: { setPage: (page: Page) => void }) => (
     </div>
       
     <div className="max-w-7xl mx-auto mt-12 pt-8 border-t border-paper/20 flex flex-col md:flex-row justify-between items-center text-sm text-paper/60">
-      <p>© 2024 LiveGuard AI Project. All rights reserved.</p>
+      <p>© 2024 Provenance Project. All rights reserved.</p>
       <p>This is a technical demonstration.</p>
     </div>
   </footer>
@@ -472,7 +472,7 @@ const HomePage = ({ setPage }: { setPage: (page: Page) => void }) => (
       <div className="max-w-4xl mx-auto">
         <h2 className="font-serif font-black text-4xl mb-6">Designed for Accountability</h2>
         <p className="text-lg text-ink/80 mb-8 font-sans">
-          LiveGuard AI provides comprehensive forensic evidence across three dimensions - deepfake detection, AI-generated content analysis, and context verification - empowering you to make informed decisions.
+          Provenance provides comprehensive forensic evidence across three dimensions - deepfake detection, AI-generated content analysis, and context verification - empowering you to make informed decisions.
         </p>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-2xl mx-auto opacity-60 grayscale hover:grayscale-0 transition-all duration-500">
           {/* Placeholder Logos */}
@@ -1085,7 +1085,7 @@ const HowItWorksPage = () => (
         System Architecture Overview
       </h3>
       <p className="text-ink/80 mb-8 leading-relaxed">
-        LiveGuard AI employs a modular, pipeline-based architecture where each component operates independently. 
+        Provenance employs a modular, pipeline-based architecture where each component operates independently. 
         This design ensures graceful degradation - if one signal module fails, the system continues to provide 
         assessments based on available signals.
       </p>
@@ -1362,7 +1362,7 @@ const HowItWorksPage = () => (
                 <Activity size={20} className="text-alert mt-1" />
                 <div>
                   <strong className="block text-lg mb-1">No Accounts, No Storage</strong>
-                  <p className="text-sm text-ink/70 leading-relaxed">Hosted deployments run over HTTPS/TLS. The service has no user accounts or stored credentials — each upload is processed in-memory and discarded immediately after analysis.</p>
+                  <p className="text-sm text-ink/70 leading-relaxed">Hosted deployments run over HTTPS/TLS. The service has no user accounts or stored credentials; each upload is processed in-memory and discarded immediately after analysis.</p>
                 </div>
               </div>
             </li>
@@ -1448,7 +1448,7 @@ const HowItWorksPage = () => (
 
 const UseCasesPage = () => (
   <div className="py-12 px-6 max-w-7xl mx-auto">
-    <SectionHeading subtitle="Who relies on LiveGuard AI?">
+    <SectionHeading subtitle="Who relies on Provenance?">
       Target Personas & User Journeys
     </SectionHeading>
     
@@ -1679,7 +1679,7 @@ const UseCasesPage = () => (
             },
             {
               phase: "Analysis",
-              desc: "Runs video through all three LiveGuard AI modules. Deepfake: LOW. AI-generated: LOW. Context: HIGH risk (score: 88). Multiple temporal/spatial inconsistencies flagged.",
+              desc: "Runs video through all three Provenance modules. Deepfake: LOW. AI-generated: LOW. Context: HIGH risk (score: 88). Multiple temporal/spatial inconsistencies flagged.",
               icon: Activity,
               time: "Day 1"
             },
@@ -1691,7 +1691,7 @@ const UseCasesPage = () => (
             },
             {
               phase: "Publication",
-              desc: "Publishes detailed fact-check article citing all three LiveGuard modules: deepfake analysis ruled out face-swaps, AI-generated detection confirmed genuine footage, context analysis identified temporal/spatial mismatches. Includes forensic evidence explanations.",
+              desc: "Publishes detailed fact-check article citing all three Provenance modules: deepfake analysis ruled out face-swaps, AI-generated detection confirmed genuine footage, context analysis identified temporal/spatial mismatches. Includes forensic evidence explanations.",
               icon: FileText,
               time: "Day 4"
             }
@@ -1960,7 +1960,7 @@ const AboutPage = () => (
         <div className="bg-alert/20 border-2 border-alert p-6">
           <h5 className="font-bold text-xl mb-3">Disclaimer for Production Use</h5>
           <p className="text-sm leading-relaxed opacity-90">
-            LiveGuard AI is an assistive verification tool that provides probabilistic risk assessments based on 
+            Provenance is an assistive verification tool that provides probabilistic risk assessments based on 
             available evidence. It should be used as <strong>one input among many</strong> in editorial and moderation 
             workflows. Organizations deploying this system must:
           </p>
@@ -2120,12 +2120,12 @@ const AboutPage = () => (
                 Product Requirements Document (PRD)
               </h4>
               <p className="text-ink/80 leading-relaxed mb-4">
-                Access the complete Product Requirements Document for LiveGuard AI, including detailed system architecture, 
+                Access the complete Product Requirements Document for Provenance, including detailed system architecture, 
                 technical specifications, use cases, and implementation roadmap for all three forensic modules.
               </p>
               <a 
                 href="PRD2.pdf" 
-                download="LiveGuard_AI_PRD.pdf"
+                download="Provenance_AI_PRD.pdf"
                 className="px-8 py-3 bg-alert text-ink font-bold border-2 border-ink hover:bg-ink hover:text-alert transition-all shadow-hard inline-flex items-center gap-3"
               >
                 <FileText size={20} />

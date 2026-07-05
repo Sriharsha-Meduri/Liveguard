@@ -21,7 +21,7 @@ from analyze_deepfake import analyze_deepfake_risk
 from analyze_synthetic import analyze_synthetic_video
 from analyze_context import analyze_context_integrity
 app = FastAPI(
-    title="LiveGuard AI API",
+    title="Provenance API",
     description="Video authenticity verification API",
     version="1.0.0"
 )
@@ -38,7 +38,7 @@ app.add_middleware(
 async def root():
 
     return {
-        "service": "LiveGuard AI API",
+        "service": "Provenance API",
         "version": "1.0.0",
         "status": "operational"
     }
@@ -152,7 +152,7 @@ if __name__ == "__main__":
     from pathlib import Path
     temp_dir = Path(__file__).parent / "temp"
     temp_dir.mkdir(exist_ok=True)
-    print("Starting LiveGuard AI Backend...")
+    print("Starting Provenance Backend...")
     print("API Docs: http://localhost:8000/docs")
     print("Health Check: http://localhost:8000/health")
     uvicorn.run(app, host="0.0.0.0", port=8000)
